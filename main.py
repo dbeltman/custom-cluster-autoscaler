@@ -21,8 +21,8 @@ def main():
     for i in ret.items:
         if i.status.phase == "Pending":
             print("%s\t%s\t%s" % (i.metadata.namespace, i.metadata.name, i.status.phase))
-            field_selector='involvedObject.name='+i.metadata.name
-            stream = watch.Watch().stream(v1.list_namespaced_event, i.metadata.namespace, field_selector=field_selector, timeout_seconds=1)
+            fs='involvedObject.name='+i.metadata.name
+            stream = watch.Watch().stream(v1.list_namespaced_event, i.metadata.namespace, field_selector=fs, timeout_seconds=1)
             for event in stream:
                 print(event['object'].message)
 
