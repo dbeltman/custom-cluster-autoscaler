@@ -1,4 +1,6 @@
 import yaml, os
+from src.esphome_handler import power_on_esphome_system
+import asyncio
 
 if os.getenv("PRODUCTION") == "True":
     node_inventory_file = "/config/node_inventory.yaml"
@@ -29,5 +31,5 @@ def handle_node_request(nodename):
     bmc_method = get_bmc_method(nodename, nodes)
     if bmc_method is not None:
         if bmc_method == "esphome":
-            # esphome_power_on(nodename)
+            asyncio.run(power_on_esphome_system(nodename))
             print("turning on bmc")
