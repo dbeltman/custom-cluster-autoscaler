@@ -77,13 +77,20 @@ class AutoScaleNode:
         return NodeCapabilities()
 
 
+class PendingPod:
+    def __init__(self, pendingpodreason, podname):
+        self.reason = pendingpodreason
+        self.podname = podname
+
+
 class PendingPodReason:
     _reasons = None
 
-    def __init__(self, name, message, regex):
+    def __init__(self, name, message, regex, requirement):
         self.name = name
         self.message = message
         self.regex = regex
+        self.requirement = requirement
 
     @classmethod
     def load_reasons_from_yaml(cls, reasons_yaml):

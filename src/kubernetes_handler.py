@@ -1,7 +1,7 @@
 import logging
 from kubernetes import client, config, watch
-from src.event_parser import handle_events
-
+from src.event_parser import handle_event
+from src.classes import PendingPod
 import os
 
 # Set up logging
@@ -22,7 +22,7 @@ def main():
         apiserverhost = "https://10.43.0.1"
 
     else:
-        print("DEVELOPMODE is ON!")
+        # print("DEVELOPMODE is ON!")
         tokenpath = "dev/secrets/token"
         capath = "dev/secrets/ca.crt"
         apiserverhost = "https://192.168.230.15:6443"
@@ -40,10 +40,11 @@ def main():
 def handle_pending_pods():
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))
-    ret = v1.list_pod_for_all_namespaces(watch=False)
+    ret = v1.list_pod_for_all_namespaces(watch=False)  # Get all pods
     matches = 0
+    pending_pods = []
     for i in ret.items:
-        if i.status.phase == "Pending":
+        if i.status.phase == "Pending":  # Check if pending
             logger.info(
                 "%s\t%s\t%s" % (i.metadata.namespace, i.metadata.name, i.status.phase)
             )
@@ -53,11 +54,25 @@ def handle_pending_pods():
                 i.metadata.namespace,
                 field_selector=fs,
                 timeout_seconds=1,
+            )  # Get all events for pod
+            latest_event = None
+            for event in stream:  # Check if pending reasons match our reason_inventory
+                # Update the latest event variable
+                if (
+                    latest_event is None
+                    or event["object"].metadata.creation_timestamp
+                    > latest_event["object"].metadata.creation_timestamp
+                ):
+                    latest_event = event
+            pendingpodreason = handle_event(latest_event["object"].message)
+            logger.info(
+                pendingpodreason.message
+                + " | "
+                + pendingpodreason.name
+                + ": "
+                + i.metadata.name
             )
-            result=handle_events(stream)
-            if len(result) > 0:
-                logger.info("Found pods that match a known reason!")
-            else: 
-                logger.warn("No pods found!")
-            # logger.info(result)
-    
+            pending_pod = PendingPod(pendingpodreason, i.metadata.name)
+            if pendingpodreason.name != "Unknown":
+                pending_pods.append(pending_pod)
+    return pending_pods

@@ -1,0 +1,9 @@
+- nodeName: node1
+  capabilities:
+    - gpu
+  bmcMethod: esphome
+
+- nodeName: node2
+  capabilities:
+    - nodespecificresources
+  bmcMethod: ipmi  

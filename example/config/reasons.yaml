@@ -1,7 +1,14 @@
 - name: Insufficient GPU
   message: A pod was found that wants GPU but none is available!
+  requirement: gpu
   regex: ".*Insufficient nvidia.com/gpu.*"
 
 - name: Pet Node Requested
+  requirement: nodespecificresources
   message: A specific node (pet) was requested but is not available!
   regex: ".*node affinity/selector.*"
+
+- name: Unknown reason
+  requirement: unknown
+  message: A reason for this pod's pending state has not been defined!
+  regex: "UnknownReason"

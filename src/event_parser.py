@@ -1,4 +1,4 @@
-from src.classes import all_reasons
+from src.classes import all_reasons, PendingPodReason
 import re
 import logging
 
@@ -11,14 +11,18 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def handle_events(stream):
-    compatible_pods=[]
-    for event in stream:
-        msg = event["object"].message
-        for reason in all_reasons:
-            if re.search(reason.regex, msg):
-                compatible_pods.append(reason)
-                logger.info(reason.message)
-                logger.debug(msg)
-                return compatible_pods
-
+def handle_event(msg):
+    # compatible_pods = []
+    for reason in all_reasons:
+        if re.search(
+            reason.regex, msg
+        ):  # Match the k8s event message with a regex defined in the reasons.yaml
+            logger.debug(msg)
+            return reason
+        else:
+            return PendingPodReason(
+                "Unknown",
+                "No reason has been defined for this pod's pending status!",
+                "Unknown Regex",
+                "unknown",
+            )
