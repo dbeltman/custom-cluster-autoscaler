@@ -3,6 +3,7 @@ import os
 import time
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode
 from src.kubernetes_handler import handle_pending_pods
+from src.node_handler import find_node_by_capability
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,7 +23,10 @@ else:
 
 
 def main():
-    handle_pending_pods()
+    pending_pods = handle_pending_pods()
+    for pending_pod in pending_pods:
+        # print(pending_pod.reason.requirement, "needed!")
+        print(find_node_by_capability(pending_pod.reason.requirement))
 
 
 if __name__ == "__main__":
