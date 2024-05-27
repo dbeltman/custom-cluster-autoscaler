@@ -29,13 +29,14 @@ def main():
             # print(pending_pod.reason.requirement, "needed!")
             print(get_nodes_by_requirement(pending_pod.reason.requirement))
             # Note: Hardcoding the first-in-list option is not desired. A better approach would be to handle all found nodes.
-            node = get_nodes_by_requirement(pending_pod.reason.requirement)[0]  # [0] indexing is used here, which may lead to issues if there are multiple suitable nodes
-            node_status = check_node_presence(node.node_name)  # Add the "check_node_presence" function from kubernetes_handler.py to check for node presence
-            if node_status == True:
-                power_on_esphome_system(node.node_name)
-                break
-            else:
-                logger.warning(f"{node.node_name} is not present. Auto-scaling skipped for this node.")
+            for node in get_nodes_by_requirement(pending_pod.reason.requirement):  # Loop through each node by requirement
+                node_status = check_node_presence(node.node_name)   # Check node presence
+                if node_status == True:
+                        logger.info(f"{node.node_name} is present, skipping auto-scaling.")  # Skip this node if present
+                        continue
+                else:
+                        power_on_esphome_system(node.node_name)
+                        break  # If the node is not present, proceed with auto-scaling and break the loop
     else:
         logger.info("No pending pods as of now")
 
