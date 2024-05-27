@@ -36,6 +36,20 @@ def main():
     configuration.ssl_ca_cert = capath
     return configuration
 
+# Function to check if a node is present in the cluster
+def check_node_presence(node_name):
+    configuration = main()
+    # Create a Kubernetes client with the configured configuration
+    v1 = client.CoreV1Api(configuration)
+    
+    # Get the nodes list from the API
+    nodes_list = v1.list_node()
+
+    # Iterate through the nodes and filter for the given node name
+    for node in nodes_list.items:
+        if node.metadata.labels.get("name") == node_name:
+            return True  # Node is present
+    return False  # Node is not found
 
 def get_pending_pods():
     configuration = main()
