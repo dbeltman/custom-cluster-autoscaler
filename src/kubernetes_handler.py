@@ -37,7 +37,7 @@ def main():
     return configuration
 
 
-def handle_pending_pods():
+def get_pending_pods():
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))
     ret = v1.list_pod_for_all_namespaces(watch=False)  # Get all pods
