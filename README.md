@@ -12,6 +12,14 @@ How it works:
 - If node is configured to auto-join cluster, it will automatically pick up workload after boot
 
 ToDo:
+MustHave:
+- Downscaling support
 - Define secrets per host
+ShouldHave:
+- Detailed Deployment instructions (configmap, secret)
+- ESPHome example config with added power-on logic to avoid looping nodes
+- Add waiting logic while node is powering up (partly mitigated by added ESPHome logic)
 - Support native IPMI
+CouldHave:
 - Better Python organization
+- Hardware (flasing) instructions
