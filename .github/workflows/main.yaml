@@ -39,3 +39,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+              
+      - name: Aqua Security Trivy
+        uses: aquasecurity/trivy-action@0.21.0
+            
