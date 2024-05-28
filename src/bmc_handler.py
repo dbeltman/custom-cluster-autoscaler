@@ -1,8 +1,14 @@
-import asyncio
+import logging
 from aioesphomeapi import APIClient
 from aioesphomeapi.model import SwitchInfo
 import re, os
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 # Function to power on the esphome system
 async def power_on_esphome_system(nodename):
@@ -23,6 +29,6 @@ async def power_on_esphome_system(nodename):
         # Check if it's a switch and its name ends with "_power"
         if type(entity) is SwitchInfo:
             if re.search(".*_power$", entity.object_id):
-                print("Power switch found! Turning on switch")
+                logger.info("Power switch found for node" + nodename + "! Turning on switch")
                 # Create a command to turn the switch on
                 command = api.switch_command(key=entity.key, state=True)
