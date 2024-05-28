@@ -38,17 +38,20 @@ def main():
 
 # Function to check if a node is present in the cluster
 def check_node_presence(node_name):
+    logger.info("Checking node presence in cluster")
     configuration = main()
     # Create a Kubernetes client with the configured configuration
-    v1 = client.CoreV1Api(configuration)
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
     
     # Get the nodes list from the API
-    nodes_list = v1.list_node()
+    nodes_list = v1.list_node(watch=False)
 
     # Iterate through the nodes and filter for the given node name
     for node in nodes_list.items:
-        if node.metadata.labels.get("name") == node_name:
+        if node.metadata.name == node_name:
+            logger.info("Node " + node_name + " is present")
             return True  # Node is present
+    logger.info("Node " + node_name + " NOT present")
     return False  # Node is not found
 
 def get_pending_pods():
