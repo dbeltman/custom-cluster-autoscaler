@@ -8,7 +8,7 @@ RUN apk add python-${version} py${version}-pip && \
 
 USER nonroot
 COPY requirements.txt /app/
+COPY example/config/reasons.yaml /config/reasons.yaml
 RUN  pip install -r requirements.txt --user
 COPY . .
-RUN find /app
 ENTRYPOINT [ "python", "/app/main.py" ]
