@@ -44,7 +44,9 @@ jobs:
         uses: aquasecurity/trivy-action@0.21.0
         with:
           image-ref: 'ghcr.io/dbeltman/custom-cluster-autoscaler:${{ github.sha }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
             
