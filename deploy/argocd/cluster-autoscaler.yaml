@@ -69,3 +69,10 @@ spec:
     automated:
       prune: true
       selfHeal: true
+  # This is present to allow for manual "pausing" of the service without ArgoCD interference
+  # Not necessariy best practice, but project is new and will have bugs.
+  ignoreDifferences: 
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas         
