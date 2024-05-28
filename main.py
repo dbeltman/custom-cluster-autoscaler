@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+import sys
+import signal
 import asyncio
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode
 from src.kubernetes_handler import get_pending_pods, check_node_presence
@@ -22,8 +24,14 @@ else:
     logger.warning("Running in DEVELOPMENT mode!")
     debugpy.listen(5679)
 
+def signal_handler(signum, frame):
+    logger.info('Caught SIGTERM signal. Stopping...')
+    sys.exit(0)
+
+
 
 def main():
+    signal.signal(signal.SIGTERM, signal_handler)
     pending_pods = get_pending_pods()
     if len(pending_pods) > 0:
         for pending_pod in pending_pods:
