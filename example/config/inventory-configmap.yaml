@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  inventory.yaml: |-
+    - nodeName: node1
+      capabilities:
+        - gpu
+      bmcMethod: esphome
+
+    - nodeName: node2
+      capabilities:
+        - nodespecificresources
+      bmcMethod: ipmi
+kind: ConfigMap
+metadata:
+  name: node-inventory
