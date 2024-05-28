@@ -17,6 +17,7 @@ Right now this is done using the following (3$) device: https://devices.esphome.
 - Downscaling support
 - Define secrets per host
 - container image versioning
+- prometheus metrics for alerting
 #### ShouldHave:
 - Detailed Deployment instructions (configmap, secret)
 - ESPHome example config with added power-on logic to avoid looping nodes
