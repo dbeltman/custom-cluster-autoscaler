@@ -8,7 +8,7 @@ class Node:
 
 def get_node_inventory():
     if os.getenv("PRODUCTION") == "True":
-        node_inventory_file = "/config/node_inventory.yaml"
+        node_inventory_file = "/config/inventory.yaml"
 
     else:
         node_inventory_file = "dev/config/inventory.yaml"
