@@ -11,7 +11,7 @@ def get_node_inventory():
         node_inventory_file = "/config/node_inventory.yaml"
 
     else:
-        node_inventory_file = "example/config/inventory.yaml"
+        node_inventory_file = "dev/config/inventory.yaml"
     with open(node_inventory_file, "r") as f:
         available_nodes = yaml.safe_load(f)
     return available_nodes
