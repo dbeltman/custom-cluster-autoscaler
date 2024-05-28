@@ -2,7 +2,7 @@ import yaml
 import os
 
 if os.getenv("PRODUCTION") == "True":
-    reasons_yaml = "/config/reasons.yaml"
+    reasons_yaml = "/config/reasons/reasons.yaml"
 else:
     reasons_yaml = "example/config/reasons.yaml"
 
