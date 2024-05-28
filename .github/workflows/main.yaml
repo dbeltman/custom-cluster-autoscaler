@@ -42,4 +42,9 @@ jobs:
               
       - name: Aqua Security Trivy
         uses: aquasecurity/trivy-action@0.21.0
+        with:
+          image-ref: 'ghcr.io/dbeltman/custom-cluster-autoscaler:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
             
