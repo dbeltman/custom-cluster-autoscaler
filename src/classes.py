@@ -78,10 +78,10 @@ class AutoScaleNode:
 
 
 class PendingPod:
-    def __init__(self, pendingpodreason, podname):
+    def __init__(self, pendingpodreason, podname, podnamespace):
         self.reason = pendingpodreason
         self.podname = podname
-
+        self.podnamespace = podnamespace
 
 class PendingPodReason:
     _reasons = None
