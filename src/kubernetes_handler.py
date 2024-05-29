@@ -54,6 +54,22 @@ def check_node_presence(node_name):
     logger.info("Node " + node_name + " NOT present")
     return False  # Node is not found
 
+
+def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
+    # Set up the Kubernetes client
+    configuration = main()
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
+
+    # Get the pod object
+    pod = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+    pod.metadata.labels["cluster-autoscaler-triggered"] = "true"    
+    # Label the pod
+    v1.patch_namespaced_pod(pod_name, namespace=namespace, body=pod)
+
+    logger.info("Labeled pod {} in namespace {} to be marked as handled".format(pod_name, namespace))
+
+
+
 def get_pending_pods():
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))
@@ -61,7 +77,13 @@ def get_pending_pods():
     matches = 0
     pending_pods = []
     for i in ret.items:
-        if i.status.phase == "Pending":  # Check if pending
+        if i.status.phase == "Pending":  # Check if pending AND not already handled
+            try:
+                if i.metadata.labels["cluster-autoscaler-triggered"] == "true":
+                    logger.info(f"Found already handled pod: {i.metadata.name} in namespace {i.metadata.namespace}")
+                    continue
+            except KeyError:
+                pass
             logger.info(
                 "%s\t%s\t%s" % (i.metadata.namespace, i.metadata.name, i.status.phase)
             )
@@ -89,7 +111,7 @@ def get_pending_pods():
                 + ": "
                 + i.metadata.name
             )
-            pending_pod = PendingPod(pendingpodreason, i.metadata.name)
+            pending_pod = PendingPod(pendingpodreason, i.metadata.name, i.metadata.namespace)
             if pendingpodreason.name != "Unknown":
                 pending_pods.append(pending_pod)
     return pending_pods
