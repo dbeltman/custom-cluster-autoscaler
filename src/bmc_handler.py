@@ -10,14 +10,19 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-# Function to power on the esphome system
 async def power_on_esphome_system(nodename):
+    # Function to power on the esphome system for a given node name
+    #
+    # This function connects to ESPHome API, logs in with provided credentials, and searches for a switch entity that ends with "_power". If found, it turns the switch on.
+    #
+    # Args:
+    #     nodename (str): The name of the node whose power switch should be turned on.    
     # Set up connection to ESPHome API client
     api = APIClient(
-        address=os.getenv("bmc_hostname"),
-        port=os.getenv("bmc_port", 6053),
-        password=os.getenv("bmc_password"),
-        noise_psk=os.getenv("bmc_encryptionkey"),
+        address=os.getenv(f"{nodename}_bmc_hostname"),
+        port=os.getenv(f"{nodename}_bmc_port", 6053),
+        password=os.getenv(f"{nodename}_bmc_password"),
+        noise_psk=os.getenv(f"{nodename}_bmc_encryptionkey"),
     )
     # Connect to the API and log in
     await api.connect(login=True)
@@ -29,6 +34,8 @@ async def power_on_esphome_system(nodename):
         # Check if it's a switch and its name ends with "_power"
         if type(entity) is SwitchInfo:
             if re.search(".*_power$", entity.object_id):
-                logger.info("Power switch found for node" + nodename + "! Turning on switch")
+                logger.info(f"Power switch found for node {nodename}! Turning on switch")
                 # Create a command to turn the switch on
                 command = api.switch_command(key=entity.key, state=True)
+
+
