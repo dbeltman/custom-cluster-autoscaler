@@ -5,7 +5,7 @@ import sys
 import signal
 import asyncio
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode
-from src.kubernetes_handler import get_pending_pods, check_node_presence
+from src.kubernetes_handler import get_pending_pods, check_node_presence, label_pod_with_custom_autoscaler_trigger
 from src.inventory_handler import get_nodes_by_requirement
 from src.bmc_handler import power_on_esphome_system
 
@@ -59,12 +59,13 @@ def main():
                         if node.bmc_method == "esphome":
                             logger.info(f"Turning on the {node.node_name} using esphome system.")
                             asyncio.run(power_on_esphome_system(node.node_name))
+                            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
                         else:
                             logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
                         
                         break  # If the node is not present, proceed with auto-scaling and break the loop
     else:
-        logger.info("No pending pods as of now")
+        logger.info("No pending or unhandled pods as of now")
 if __name__ == "__main__":
     while True:
         main()
