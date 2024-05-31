@@ -18,6 +18,10 @@ async def power_on_esphome_system(nodename):
     # Args:
     #     nodename (str): The name of the node whose power switch should be turned on.    
     # Set up connection to ESPHome API client
+    address=os.getenv(f"{nodename}_bmc_hostname")
+    if not address:
+        logger.error(f"A hostname for {nodename} was not found in an ENV variable")
+        return False
     api = APIClient(
         address=os.getenv(f"{nodename}_bmc_hostname"),
         port=os.getenv(f"{nodename}_bmc_port", 6053),
@@ -37,5 +41,6 @@ async def power_on_esphome_system(nodename):
                 logger.info(f"Power switch found for node {nodename}! Turning on switch")
                 # Create a command to turn the switch on
                 command = api.switch_command(key=entity.key, state=True)
+                return True
 
 

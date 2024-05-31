@@ -58,8 +58,8 @@ def main():
                         # Check BMC method and perform action for esphome
                         if node.bmc_method == "esphome":
                             logger.info(f"Turning on the {node.node_name} using esphome system.")
-                            asyncio.run(power_on_esphome_system(node.node_name))
-                            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                            if asyncio.run(power_on_esphome_system(node.node_name)) != False:
+                                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
                         else:
                             logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
                         
