@@ -14,15 +14,19 @@ logger.addHandler(ch)
 def handle_event(msg):
     # compatible_pods = []
     for reason in all_reasons:
-        if re.search(
-            reason.regex, msg
-        ):  # Match the k8s event message with a regex defined in the reasons.yaml
-            logger.debug(msg)
-            return reason
-        else:
-            return PendingPodReason(
-                "Unknown",
-                "No reason has been defined for this pod's pending status!",
-                "Unknown Regex",
-                "unknown",
-            )
+        try:
+            if re.search(
+                reason.regex, msg
+            ):  # Match the k8s event message with a regex defined in the reasons.yaml
+                logger.debug(msg)
+                return reason
+            else:
+                return PendingPodReason(
+                    name="Unknown",
+                    message="No reason has been defined for this pod's pending status!",
+                    regex="Unknown Regex",
+                    requirement="unknown",
+                )
+        except TypeError as e:
+            print(f'[ERROR] TypeError: {e}')
+        
