@@ -103,15 +103,18 @@ def get_pending_pods():
                     > latest_event["object"].metadata.creation_timestamp
                 ):
                     latest_event = event
-            pendingpodreason = handle_event(latest_event["object"].message)
-            logger.info(
-                pendingpodreason.message
-                + " | "
-                + pendingpodreason.name
-                + ": "
-                + i.metadata.name
-            )
-            pending_pod = PendingPod(pendingpodreason, i.metadata.name, i.metadata.namespace)
-            if pendingpodreason.name != "Unknown":
-                pending_pods.append(pending_pod)
+            try:
+                pendingpodreason = handle_event(latest_event["object"].message)
+                logger.info(
+                    pendingpodreason.message
+                    + " | "
+                    + pendingpodreason.name
+                    + ": "
+                    + i.metadata.name
+                )
+                pending_pod = PendingPod(pendingpodreason, i.metadata.name, i.metadata.namespace)
+                if pendingpodreason.name != "Unknown":
+                    pending_pods.append(pending_pod)
+            except TypeError as e:
+                print(f'ERROR: {e}')
     return pending_pods
