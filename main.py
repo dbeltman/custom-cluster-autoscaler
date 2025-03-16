@@ -44,6 +44,9 @@ def main():
     If a node is not present, it turns on the node using the specified BMC method (esphome by default).
     """
     signal.signal(signal.SIGTERM, signal_handler)
+    handle_pending_pods()
+
+def handle_pending_pods():
     pending_pods = get_pending_pods()
 
     if len(pending_pods) > 0:
