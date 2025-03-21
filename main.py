@@ -5,8 +5,8 @@ import sys
 import signal
 import asyncio
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode
-from src.kubernetes_handler import get_pending_pods, check_node_presence, label_pod_with_custom_autoscaler_trigger
-from src.inventory_handler import get_nodes_by_requirement
+from src.kubernetes_handler import get_pending_pods, check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, get_pods_on_node
+from src.inventory_handler import get_nodes_by_requirement, get_capabilities_by_name
 from src.bmc_handler import power_on_esphome_system
 
 # Set up logging
@@ -52,7 +52,7 @@ def handle_pending_pods():
     if len(pending_pods) > 0:
         for pending_pod in pending_pods:
             for node in get_nodes_by_requirement(pending_pod.reason.requirement):  # Loop through each node by requirement
-                node_status = check_node_presence(node.node_name)   # Check node presence
+                node_status = check_node_presence_in_cluster(node.node_name)   # Check node presence
                 if node_status == True:
                         logger.info(f"{node.node_name} is present, skipping auto-scaling.")  # Skip this node if present
                         continue

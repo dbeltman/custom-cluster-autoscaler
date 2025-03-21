@@ -37,7 +37,7 @@ def main():
     return configuration
 
 # Function to check if a node is present in the cluster
-def check_node_presence(node_name):
+def check_node_presence_in_cluster(node_name):
     logger.info("Checking node presence in cluster")
     configuration = main()
     # Create a Kubernetes client with the configured configuration
