@@ -20,13 +20,11 @@ def handle_event(msg):
             ):  # Match the k8s event message with a regex defined in the reasons.yaml
                 logger.debug(msg)
                 return reason
-            else:
-                return PendingPodReason(
-                    name="Unknown",
-                    message="No reason has been defined for this pod's pending status!",
-                    regex="Unknown Regex",
-                    requirement="unknown",
-                )
         except TypeError as e:
             print(f'[ERROR] TypeError: {e}')
-        
+    return PendingPodReason(
+                name="Unknown",
+                message="No reason has been defined for this pod's pending status!",
+                regex="Unknown Regex",
+                requirement="unknown",
+            )
