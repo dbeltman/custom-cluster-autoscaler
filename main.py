@@ -85,6 +85,10 @@ def handle_pending_pods():
             try:
                 pendingpodreason = handle_event(event["object"].message)
                 obj=event['object'].involved_object
+                pod = v1.read_namespaced_pod(name=obj.name, namespace=obj.namespace)
+                if "cluster-autoscaler-triggered" in pod.metadata.labels:
+                    logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
+                    continue                    
                 logger.info(
                     pendingpodreason.message
                     + " | "
@@ -110,7 +114,8 @@ def handle_pending_pods():
                                             label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
                                     else:
                                         logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
-                                    
+                                        label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+
                                     break  # If the node is not present, proceed with auto-scaling and break the loop
                     else:
                         logger.error(f"No matching nodes found for {pending_pod.reason.requirement}")
