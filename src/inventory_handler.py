@@ -24,3 +24,10 @@ def get_nodes_by_requirement(requirement):
             node_object = Node(node["nodeName"],node["bmcMethod"])
             compatible_nodes.append(node_object)
     return compatible_nodes
+
+def get_requirements_by_node(node_name):
+    available_nodes = get_node_inventory()
+    for node in available_nodes:
+        if node['nodeName'] == node_name:
+            return node['capabilities']
+    return None
