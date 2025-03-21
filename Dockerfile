@@ -2,7 +2,7 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN chown -R nonroot.nonroot /app/
+RUN	chown -R nonroot: /app/
 
 USER nonroot
 COPY requirements.txt /app/
