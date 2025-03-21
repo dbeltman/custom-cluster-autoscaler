@@ -2,8 +2,7 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN apk add python-3.12 py3.12-pip && \
-	chown -R nonroot.nonroot /app/
+RUN chown -R nonroot.nonroot /app/
 
 USER nonroot
 COPY requirements.txt /app/
