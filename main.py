@@ -1,14 +1,15 @@
 import logging
 import os
-import time
+import time, datetime
 import sys
 import signal
 import asyncio
-from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode
-from src.kubernetes_handler import get_pending_pods, check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, get_pods_on_node
-from src.inventory_handler import get_nodes_by_requirement, get_capabilities_by_name
+from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode, PendingPod
+from src.kubernetes_handler import check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, get_pods_on_node
+from src.inventory_handler import get_nodes_by_requirement, get_requirements_by_node
 from src.bmc_handler import power_on_esphome_system
-
+from src.event_parser import handle_event
+from kubernetes import client, config, watch
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -46,30 +47,80 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     handle_pending_pods()
 
-def handle_pending_pods():
-    pending_pods = get_pending_pods()
+def setup_kubernetes_client():
+    # Set up kubernetes
+    if os.getenv("PRODUCTION") == "True":
+        tokenpath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        capath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        apiserverhost = "https://10.43.0.1"
 
-    if len(pending_pods) > 0:
-        for pending_pod in pending_pods:
-            for node in get_nodes_by_requirement(pending_pod.reason.requirement):  # Loop through each node by requirement
-                node_status = check_node_presence_in_cluster(node.node_name)   # Check node presence
-                if node_status == True:
-                        logger.info(f"{node.node_name} is present, skipping auto-scaling.")  # Skip this node if present
-                        continue
-                else:
-                        logger.info(f"{node.node_name} is not present, turning on the node.")
-                        # Check BMC method and perform action for esphome
-                        if node.bmc_method == "esphome":
-                            logger.info(f"Turning on the {node.node_name} using esphome system.")
-                            if asyncio.run(power_on_esphome_system(node.node_name)) != False:
-                                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
-                        else:
-                            logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
-                        
-                        break  # If the node is not present, proceed with auto-scaling and break the loop
     else:
-        logger.info("No pending or unhandled pods as of now")
+        # print("DEVELOPMODE is ON!")
+        tokenpath = "dev/secrets/token"
+        capath = "dev/secrets/ca.crt"
+        apiserverhost = "https://192.168.230.17:6443"
+
+    token = open(tokenpath)
+    token_text = token.read()
+    configuration = client.Configuration()
+    configuration.api_key["authorization"] = token_text
+    configuration.api_key_prefix["authorization"] = "Bearer"
+    configuration.host = apiserverhost
+    configuration.ssl_ca_cert = capath
+    return configuration
+
+def handle_pending_pods():
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    configuration = setup_kubernetes_client()
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
+    w = watch.Watch()
+    for event in w.stream(v1.list_event_for_all_namespaces,):
+        if event["object"].reason == "FailedScheduling" and event["object"].message.startswith("skip schedule deleting pod") == False and event["type"] == "ADDED":
+            event_time=event["object"].event_time
+            if (start_time - event_time).total_seconds() > 2:
+                print("Event is from the past, ignoring")
+                continue
+            print ("Event has failedscheduling reason:")
+            # print("Event: %s %s %s" % (event['object'].reason, event['object'].message, event['object'].involved_object.name))
+            try:
+                pendingpodreason = handle_event(event["object"].message)
+                obj=event['object'].involved_object
+                pod = v1.read_namespaced_pod(name=obj.name, namespace=obj.namespace)
+                if "cluster-autoscaler-triggered" in pod.metadata.labels:
+                    logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
+                    continue                    
+                logger.info(
+                    pendingpodreason.message
+                    + " | "
+                    + pendingpodreason.name
+                    + ": "
+                    + obj.name
+                )
+                pending_pod = PendingPod(pendingpodreason, obj.name, obj.namespace)
+                if pendingpodreason.name != "Unknown":
+                    matching_nodes=get_nodes_by_requirement(pending_pod.reason.requirement)
+                    if len(matching_nodes) > 0:
+                        for node in matching_nodes:  # Loop through each node by requirement
+                            node_status = check_node_presence_in_cluster(node.node_name)   # Check node presence
+                            if node_status == True:
+                                    logger.info(f"{node.node_name} is present, skipping auto-scaling and trying to find another node.")  # Skip this node if present
+                                    continue
+                            else:
+                                    logger.info(f"{node.node_name} is not present, turning on the node.")
+                                    # Check BMC method and perform action for esphome
+                                    if node.bmc_method == "esphome":
+                                        logger.info(f"Turning on the {node.node_name} using esphome system.")
+                                        if asyncio.run(power_on_esphome_system(node.node_name)) != False:
+                                            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                                    else:
+                                        logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
+                                        label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+
+                                    break  # If the node is not present, proceed with auto-scaling and break the loop
+                    else:
+                        logger.error(f"No matching nodes found for {pending_pod.reason.requirement}")
+            except TypeError as e:
+                print(f'ERROR: {e}')
 if __name__ == "__main__":
     while True:
         main()
-        time.sleep(30)
