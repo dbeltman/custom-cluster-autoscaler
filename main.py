@@ -5,7 +5,7 @@ import sys
 import signal
 import asyncio
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode, PendingPod
-from src.kubernetes_handler import get_pending_pods, check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, get_pods_on_node
+from src.kubernetes_handler import check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, get_pods_on_node
 from src.inventory_handler import get_nodes_by_requirement, get_requirements_by_node
 from src.bmc_handler import power_on_esphome_system
 from src.event_parser import handle_event
