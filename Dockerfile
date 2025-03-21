@@ -1,9 +1,8 @@
-FROM cgr.dev/chainguard/wolfi-base
+FROM python:3.12-alpine
 
-ARG version=3.12
 WORKDIR /app
 
-RUN apk add python-${version} py${version}-pip && \
+RUN apk add python-3.12 py3.12-pip && \
 	chown -R nonroot.nonroot /app/
 
 USER nonroot
