@@ -54,6 +54,19 @@ def check_node_presence_in_cluster(node_name):
     logger.info("Node " + node_name + " NOT present")
     return False  # Node is not found
 
+# Function to get all pods on a certain node
+def get_pods_on_node(node_name):
+    logger.info(f"Getting all pods on node {node_name}")
+    configuration = main()
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
+
+    # Get the pods list for the specified node
+    pods_list = v1.list_pod_for_all_namespaces(field_selector=f"spec.nodeName={node_name}", watch=False)
+
+ 
+
+    return pods_list
+
 
 def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
     # Set up the Kubernetes client
