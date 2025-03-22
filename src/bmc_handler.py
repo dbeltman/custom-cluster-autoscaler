@@ -2,13 +2,19 @@ import logging
 from aioesphomeapi import APIClient
 from aioesphomeapi.model import SwitchInfo
 import re, os
-
+from src.mqtt_handler import publish as mqtt_publish
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+
+def power_on_mqtt_system(nodename):
+    mqtt_publish(payload=os.getenv(f"{nodename}_mqtt_poweron_payload","poweron"), topic=os.getenv(f"{nodename}_mqtt_poweron_topic"))
+    return True
+
 
 async def power_on_esphome_system(nodename):
     # Function to power on the esphome system for a given node name
