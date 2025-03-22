@@ -145,9 +145,8 @@ def watch_pending_pods():
         if event["object"].reason == "FailedScheduling" and event["object"].message.startswith("skip schedule deleting pod") == False and event["type"] == "ADDED":
             event_time=event["object"].event_time
             if (start_time - event_time).total_seconds() > 2:
-                print("Event is from the past, ignoring")
+                logger.debug("Event is from the past, ignoring")
                 continue
-            print ("Event has failedscheduling reason:")
             # print("Event: %s %s %s" % (event['object'].reason, event['object'].message, event['object'].involved_object.name))
             try:
                 handle_pending_pod(event=event)
