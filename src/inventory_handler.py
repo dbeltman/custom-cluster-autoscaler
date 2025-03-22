@@ -25,7 +25,7 @@ def get_nodes_by_requirement(requirement):
             compatible_nodes.append(node_object)
     return compatible_nodes
 
-def get_requirements_by_node(node_name):
+def get_capabilities_by_node(node_name):
     available_nodes = get_node_inventory()
     for node in available_nodes:
         if node['nodeName'] == node_name:
