@@ -83,7 +83,7 @@ def handle_pending_pod(event):
         pendingpodreason.message
         + " | "
         + pendingpodreason.name
-        + ": "
+        + "by pod/"
         + obj.name
     )
     pending_pod = PendingPod(pendingpodreason, obj.name, obj.namespace)
