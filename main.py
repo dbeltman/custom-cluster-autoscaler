@@ -75,7 +75,10 @@ def handle_pending_pod(event):
     pod = v1.read_namespaced_pod(name=obj.name, namespace=obj.namespace)
     if "cluster-autoscaler-triggered" in pod.metadata.labels:
         logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
-        return None                   
+        return None    
+    if pod.metadata.owner_references[0].kind == "DaemonSet":
+        logger.info(f"Ignoring pod {pod.metadata.name} because it's part of a daemonset")
+        return None
     logger.info(
         pendingpodreason.message
         + " | "
@@ -88,6 +91,19 @@ def handle_pending_pod(event):
         matching_nodes=get_nodes_by_requirement(pending_pod.reason.requirement)
         if len(matching_nodes) > 0:
             for node in matching_nodes:  # Loop through each node by requirement
+                if pendingpodreason.requirement == 'nodespecificresources':
+                    #Check if the node matches the specified pet node (by nodeselector)
+                    if node.node_name == pod.spec.node_selector['kubernetes.io/hostname']:
+                        logger.info("Node matches nodeselector statement!")
+                    else: 
+                        logger.info("Node does not match nodeselector statement. Skipping node")
+                        matching_nodes.remove(node)
+                        if len(matching_nodes) > 0:
+                            continue
+                        else:
+                            logger.warning("No more matching nodes left that match this pending requirement")
+                            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                            break
                 if check_node_presence_in_cluster(node.node_name) == True:
                         logger.info(f"{node.node_name} is present, skipping auto-scaling and trying to find another node.")  # Skip this node if present
                         matching_nodes.remove(node)
@@ -96,6 +112,7 @@ def handle_pending_pod(event):
                         else:
                             logger.warning("No more matching nodes left that match this pending requirement")
                             label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                            break
 
                 else:
                         logger.info(f"{node.node_name} is not present, turning on the node.")
