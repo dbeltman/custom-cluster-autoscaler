@@ -3,6 +3,7 @@ from kubernetes import client, config, watch
 from src.event_parser import handle_event
 from src.classes import PendingPod
 import os
+import time
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ def main():
         # print("DEVELOPMODE is ON!")
         tokenpath = "dev/secrets/token"
         capath = "dev/secrets/ca.crt"
-        apiserverhost = "https://192.168.230.15:6443"
+        apiserverhost = "https://192.168.230.17:6443"
 
     token = open(tokenpath)
     token_text = token.read()
@@ -77,6 +78,11 @@ def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
     pod = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
     pod.metadata.labels["cluster-autoscaler-triggered"] = "true"    
     # Label the pod
-    v1.patch_namespaced_pod(pod_name, namespace=namespace, body=pod)
-
+    for attempt in range(0,3):
+        try:
+            v1.patch_namespaced_pod(pod_name, namespace=namespace, body=pod)
+        except client.exceptions.ApiException as e:
+            logger.info(f"Got API Exception {e}, sleeping 3 seconds, retry #{attempt}")
+            time.sleep(3)
+            
     logger.info("Labeled pod {} in namespace {} to be marked as handled".format(pod_name, namespace))
