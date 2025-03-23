@@ -284,7 +284,7 @@ def create_downscale_shutdown_job_object(nodename):
     systemctl_volume=client.V1Volume(
         name="systemctl-binary",
         host_path=client.V1HostPathVolumeSource(
-            path="/bin/systemctl",
+            path="/usr/sbin/shutdown",
             type="File"
         )
     )
@@ -320,14 +320,14 @@ def create_downscale_shutdown_job_object(nodename):
         mount_path="/sys/fs/cgroup"
     )
     systemctl_volume_mount=client.V1VolumeMount(
-        mount_path="/bin/systemctl",
+        mount_path="/usr/sbin/shutdown",
         name="systemctl-binary"
     )
 
     container = client.V1Container(
         name="shutdown",
         image="ubuntu",
-        command=["/bin/systemctl", "poweroff"],
+        command=["/usr/sbin/shutdown", "-h", "+1"],
         volume_mounts=[
             systemctl_volume_mount,
             run_systemd_volume_mount,
