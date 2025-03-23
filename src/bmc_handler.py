@@ -1,7 +1,7 @@
 import logging
 from aioesphomeapi import APIClient
 from aioesphomeapi.model import SwitchInfo
-import re, os
+import re, os, asyncio
 from src.mqtt_handler import publish as mqtt_publish
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -10,7 +10,24 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-
+def power_on_node(node):
+    # Check BMC method and perform power on action
+    if node.bmc_method == "esphome":
+        logger.info(f"Turning on the {node.node_name} using esphome system.")
+        if asyncio.run(power_on_esphome_system(node.node_name)) != False:
+            logger.info(f"Sent {node.bmc_method} power-on command")
+            return True
+        else:
+            logger.error(f"Function did not return True, something went wrong powerin on node {node.node_name}")
+    elif node.bmc_method == "mqtt":
+        if power_on_mqtt_system(nodename=node.node_name):
+            logger.info(f"Sent {node.bmc_method} power-on command")
+            return True
+        else:
+            logger.error(f"Function did not return True, something went wrong powerin on node {node.node_name}")
+    else:
+        logger.warning(f"No mechanism for BMC method '{node.bmc_method}' yet!")
+        return False
 def power_on_mqtt_system(nodename):
     mqtt_publish(payload=os.getenv(f"{nodename}_mqtt_poweron_payload","poweron"), topic=os.getenv(f"{nodename}_mqtt_poweron_topic"))
     return True

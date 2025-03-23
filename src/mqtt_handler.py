@@ -22,7 +22,7 @@ def publish(topic, payload):
                         hostname=mqtt_host,
                         client_id=mqtt_client_name,
                         port=mqtt_port,
-                        retain=True,
+                        retain=False,
                         auth={'username':mqtt_username, 'password':mqtt_password})
     except:
         print("ERROR: Something went wrong publishing '" + str(payload) + "' to topic '" + str(topic) + "'!")
