@@ -79,9 +79,10 @@ def handle_downscale(nodename):
             delete_downscale_jobs(nodename=nodename)
             time.sleep(1)
             delete_node_from_cluster(nodename=nodename)
-            delete_downscale_jobs(nodename=nodename)
+            return True
         else:
             logger.error(f"Downscale failed, node {nodename} was not deemed NotReady")
+            return False
 
 def check_downscale_possibility():
     try:
