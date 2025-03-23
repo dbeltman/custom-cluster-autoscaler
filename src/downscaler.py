@@ -4,7 +4,7 @@ from src.event_parser import handle_event
 from src.classes import PendingPod
 from src.inventory_handler import get_capabilities_by_node, get_nodes_by_requirement, get_node_inventory
 from src.bmc_handler import power_on_node
-from src.kubernetes import get_pods_on_node, check_node_presence_in_cluster, create_downscale_job, create_downscale_job_object
+from src.kubernetes import get_pods_on_node, check_node_presence_in_cluster, create_downscale_job, create_downscale_drain_job_object, get_job_status, create_downscale_shutdown_job_object, wait_for_node_to_become_notready, delete_node_from_cluster, delete_downscale_jobs
 
 import os
 import time
@@ -62,10 +62,20 @@ def check_node_for_scaledown_eligibility(nodename):
             return True
 
 def handle_downscale(nodename):
-    job_object=create_downscale_job_object(nodename=nodename)
-    jobstatus=create_downscale_job(job=job_object)
-    logger.info(f"Downscale job was created with status {jobstatus}")
-    pass
+    drain_job_object=create_downscale_drain_job_object(nodename=nodename)
+    create_downscale_job(job=drain_job_object)    
+    drain_status=get_job_status(job_name=drain_job_object.metadata.name)
+    if drain_status:
+        logger.info(f"Draining node was succesful, shutting down {nodename}")
+        shutdown_job_object=create_downscale_shutdown_job_object(nodename=nodename)
+        create_downscale_job(job=shutdown_job_object)
+        node_status=wait_for_node_to_become_notready(nodename=nodename)
+        if node_status==True:
+            logger.info("Deleting node from the cluster")
+            delete_node_from_cluster(nodename=nodename)
+            delete_downscale_jobs(nodename=nodename)
+        else:
+            logger.error(f"Downscale failed, node {nodename} was not deemed NotReady")
 
 def check_downscale_possibility():
     try:

@@ -188,54 +188,210 @@ def watch_pending_pods():
                 
             except TypeError as e:
                 print(f'ERROR: {e}')
-        
-def create_downscale_job_object(nodename):
-    # Configure Pod template container
-    initcontainer = client.V1Container(
+
+# def delete_downscale_jobs(nodename):
+#     configuration = main()
+#     api_instance = client.BatchV1Api(client.ApiClient(configuration))
+#     drain_job_name=f"downscale-drain-{nodename}"
+#     shutdown_job_name=f"downscale-drain-{nodename}"
+#     while not job_completed:
+#         logger.info(f"Waiting for job {job_name} to complete")
+#         for attempt in range(0,10):
+#             api_response = api_instance.read_namespaced_job_status(
+#                 name=job_name,
+#                 namespace="custom-autoscaler-system")
+#             if api_response.status.succeeded is not None or \
+#                     api_response.status.failed is not None:
+#                 job_completed = True
+#                 return job_completed
+#             time.sleep(1)
+#         else: 
+#             logger.error(f"Job {job_name} failed to complete in 3 tries!")
+#             return job_completed    
+#     pass
+
+def delete_node_from_cluster(nodename):
+    configuration = main()
+    # Create a Kubernetes client with the configured configuration
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
+    try:
+        response = v1.delete_node(name=nodename)
+        logger.info(f"Node {nodename} was deleted from cluster")
+    except Exception as e:
+        logger.error(f"Error deleting node {nodename}: {e}")
+
+def wait_for_node_to_become_notready(nodename):
+    configuration = main()
+    # Create a Kubernetes client with the configured configuration
+    v1 = client.CoreV1Api(client.ApiClient(configuration))
+    
+    # Get the nodes list from the API
+    nodes_list = v1.list_node(
+        watch=False,
+        label_selector=f"kubernetes.io/hostname={nodename}"
+        )    
+    node_ready=True
+    for attempt in range(0,10):
+        while node_ready == True:
+            for condition in nodes_list.items[0].status.conditions:
+                if condition.type == "Ready" and condition.status != "True": 
+                    logger.info(f"Node {nodename} seems to have been shutdown after {attempt} attempts")
+                    node_ready = False
+                    return True
+            else:
+                break
+        time.sleep(10)
+    else:
+        logger.error(f"Node was not shutdown after {attempt} attempts")
+        return False
+
+def create_downscale_drain_job_object(nodename):
+    container = client.V1Container(
         name="drain",
         image="bitnami/kubectl:1.30.5",
-        command=["kubectl", "drain","--dry-run=client", nodename, "--ignore-daemonsets", "--delete-emptydir-data"])
-    container = client.V1Container(
-        name="shutdown",
-        image="alpine",
-        command=["echo", "Shutting down the host (fake)"])
+        command=["kubectl", "drain", nodename, "--ignore-daemonsets", "--delete-emptydir-data"])
     # Create and configure a spec section
     template = client.V1PodTemplateSpec(
-        metadata=client.V1ObjectMeta(labels={"app": "custom-auto-scaler-shutdown-job"}),
+        metadata=client.V1ObjectMeta(labels={"app": "custom-auto-scaler-downscale-drain-job"}),
         spec=client.V1PodSpec(
             restart_policy="Never",
             containers=[container],
-            init_containers=[initcontainer],
-            service_account="custom-cluster-autoscaler-downscaler"
+            service_account="custom-cluster-autoscaler-downscaler",
             )
         )
     # Create the specification of deployment
     spec = client.V1JobSpec(
         template=template,
         backoff_limit=1,
-        ttl_seconds_after_finished=30
+        ttl_seconds_after_finished=120
         )
     # Instantiate the job object
     job = client.V1Job(
         api_version="batch/v1",
         kind="Job",
-        metadata=client.V1ObjectMeta(name=f"downscale-{nodename}"),
+        metadata=client.V1ObjectMeta(name=f"downscale-drain-{nodename}"),
         spec=spec)
 
     return job    
 
-def get_job_status(api_instance, job_name):
+def create_downscale_shutdown_job_object(nodename):
+    # Configure Pod template container
+    toleration_not_schedulable=client.V1Toleration(
+        key = "node.kubernetes.io/unschedulable",
+        effect = "NoSchedule"
+    )
+
+    systemctl_volume=client.V1Volume(
+        name="systemctl-binary",
+        host_path=client.V1HostPathVolumeSource(
+            path="/bin/systemctl",
+            type="File"
+        )
+    )
+    run_systemd_volume=client.V1Volume(
+        name="run-systemd",
+        host_path=client.V1HostPathVolumeSource(
+            path="/run/systemd/system"
+        )
+    )
+    run_dbus_volume=client.V1Volume(
+        name="run-dbus",
+        host_path=client.V1HostPathVolumeSource(
+            path="/var/run/dbus/system_bus_socket"
+        )
+    )
+    cgroup_volume=client.V1Volume(
+        name="cgroup",
+        host_path=client.V1HostPathVolumeSource(
+            path="/sys/fs/cgroup"
+        )
+    )    
+
+    run_systemd_volume_mount=client.V1VolumeMount(
+        name="run-systemd",
+        mount_path="/run/systemd/system"
+    )
+    run_dbus_volume_mount=client.V1VolumeMount(
+        name="run-dbus",
+        mount_path="/var/run/dbus/system_bus_socket"
+    )
+    cgroup_volume_mount=client.V1VolumeMount(
+        name="cgroup",
+        mount_path="/sys/fs/cgroup"
+    )
+    systemctl_volume_mount=client.V1VolumeMount(
+        mount_path="/bin/systemctl",
+        name="systemctl-binary"
+    )
+
+    container = client.V1Container(
+        name="shutdown",
+        image="ubuntu",
+        command=["/bin/systemctl", "poweroff"],
+        volume_mounts=[
+            systemctl_volume_mount,
+            run_systemd_volume_mount,
+            run_dbus_volume_mount,
+            cgroup_volume_mount
+            ],
+        security_context=client.V1SecurityContext(
+            privileged = True
+        )
+        )
+    # Create and configure a spec section
+    template = client.V1PodTemplateSpec(
+        metadata=client.V1ObjectMeta(labels={"app": "custom-auto-scaler-downscale-shutdown-job"}),
+        spec=client.V1PodSpec(
+            node_selector={
+                'kubernetes.io/hostname': nodename
+            },
+            restart_policy="Never",
+            containers=[container],
+            service_account="custom-cluster-autoscaler-downscaler",
+            volumes=[
+                systemctl_volume,
+                run_systemd_volume,
+                run_dbus_volume,
+                cgroup_volume
+            ],
+            tolerations=[
+                toleration_not_schedulable
+            ]
+            )
+        )
+    # Create the specification of deployment
+    spec = client.V1JobSpec(
+        template=template,
+        backoff_limit=1,
+        ttl_seconds_after_finished=120
+        )
+    # Instantiate the job object
+    job = client.V1Job(
+        api_version="batch/v1",
+        kind="Job",
+        metadata=client.V1ObjectMeta(name=f"downscale-shutdown-{nodename}"),
+        spec=spec)
+
+    return job   
+
+def get_job_status(job_name):
+    configuration = main()
+    api_instance = client.BatchV1Api(client.ApiClient(configuration))
     job_completed = False
     while not job_completed:
-        api_response = api_instance.read_namespaced_job_status(
-            name=job_name,
-            namespace="custom-autoscaler-system")
-        if api_response.status.succeeded is not None or \
-                api_response.status.failed is not None:
-            job_completed = True
-        time.sleep(1)
-        print(f"Job status='{str(api_response.status)}'")
-        return job_completed
+        logger.info(f"Waiting for job {job_name} to complete")
+        for attempt in range(0,10):
+            api_response = api_instance.read_namespaced_job_status(
+                name=job_name,
+                namespace="custom-autoscaler-system")
+            if api_response.status.succeeded is not None or \
+                    api_response.status.failed is not None:
+                job_completed = True
+                return job_completed
+            time.sleep(1)
+        else: 
+            logger.error(f"Job {job_name} failed to complete in 3 tries!")
+            return job_completed
 
 def create_downscale_job(job):
     configuration = main()
@@ -243,5 +399,5 @@ def create_downscale_job(job):
     api_response = api_instance.create_namespaced_job(
         body=job,
         namespace="custom-autoscaler-system")
-    print(f"Job created. status='{str(api_response.status)}'")
+    logger.info(f"Job {job.metadata.name} created.")
     return api_response
