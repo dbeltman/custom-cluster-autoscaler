@@ -196,26 +196,17 @@ def watch_pending_pods():
             except TypeError as e:
                 print(f'ERROR: {e}')
 
-# def delete_downscale_jobs(nodename):
-#     configuration = main()
-#     api_instance = client.BatchV1Api(client.ApiClient(configuration))
-#     drain_job_name=f"downscale-drain-{nodename}"
-#     shutdown_job_name=f"downscale-drain-{nodename}"
-#     while not job_completed:
-#         logger.info(f"Waiting for job {job_name} to complete")
-#         for attempt in range(0,10):
-#             api_response = api_instance.read_namespaced_job_status(
-#                 name=job_name,
-#                 namespace="custom-autoscaler-system")
-#             if api_response.status.succeeded is not None or \
-#                     api_response.status.failed is not None:
-#                 job_completed = True
-#                 return job_completed
-#             time.sleep(1)
-#         else: 
-#             logger.error(f"Job {job_name} failed to complete in 3 tries!")
-#             return job_completed    
-#     pass
+def delete_downscale_jobs(nodename):
+    configuration = main()
+    api_instance = client.BatchV1Api(client.ApiClient(configuration))
+    drain_job_name=f"downscale-drain-{nodename}"
+    shutdown_job_name=f"downscale-drain-{nodename}"
+    try:
+        drain_job_delete = api_instance.delete_namespaced_job(drain_job_name, namespace="custom-autoscaler-system")
+        shutdown_job_delete = api_instance.delete_namespaced_job(shutdown_job_name, namespace="custom-autoscaler-system")
+    except Exception as e:
+        logger.warning(f"Something went wrong deleting scaledown jobs for {nodename}")
+
 
 def delete_node_from_cluster(nodename):
     configuration = main()
