@@ -120,6 +120,7 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
             ):
             # Check whether the pendingpodreason requirement is nodespecific resources 
             # and check whether it requests this specific node
+            #delete_downscale_jobs(node.node_name)
             logger.info(f"{node.node_name} matches pod requirement and requests this specific node. Turning on the node.")
             power_on_result=power_on_node(node=node)
             if power_on_result == True:
@@ -222,15 +223,16 @@ def wait_for_node_to_become_notready(nodename):
     configuration = main()
     # Create a Kubernetes client with the configured configuration
     v1 = client.CoreV1Api(client.ApiClient(configuration))
-    
-    # Get the nodes list from the API
-    nodes_list = v1.list_node(
-        watch=False,
-        label_selector=f"kubernetes.io/hostname={nodename}"
-        )    
+    logger.info("Waiting 60 seconds before polling node for shutdown")
+    time.sleep(60)    
+    # Get the nodes list from the API   
     node_ready=True
     for attempt in range(0,10):
         while node_ready == True:
+            nodes_list = v1.list_node(
+                watch=False,
+                label_selector=f"kubernetes.io/hostname={nodename}"
+                ) 
             for condition in nodes_list.items[0].status.conditions:
                 if condition.type == "Ready" and condition.status != "True": 
                     logger.info(f"Node {nodename} seems to have been shutdown after {attempt} attempts")
