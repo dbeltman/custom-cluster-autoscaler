@@ -4,7 +4,7 @@ from src.event_parser import handle_event
 from src.classes import PendingPod
 from src.inventory_handler import get_capabilities_by_node, get_nodes_by_requirement, get_node_inventory
 from src.bmc_handler import power_on_node
-from src.kubernetes import get_pods_on_node, check_node_presence_in_cluster, create_downscale_job, create_downscale_drain_job_object, get_job_status, create_downscale_shutdown_job_object, wait_for_node_to_become_notready, delete_node_from_cluster, delete_downscale_jobs
+from src.kubernetes import get_pods_on_node, check_node_presence_in_cluster, create_downscale_job, create_downscale_drain_job_object, get_job_status, create_downscale_shutdown_job_object, wait_for_node_to_become_notready, delete_node_from_cluster, check_for_pending_upscale, delete_downscale_jobs
 
 import os
 import time
