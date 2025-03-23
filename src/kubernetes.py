@@ -191,18 +191,29 @@ def watch_pending_pods():
         
 def create_downscale_job_object(nodename):
     # Configure Pod template container
+    initcontainer = client.V1Container(
+        name="drain",
+        image="bitnami/kubectl:1.30.5",
+        command=["kubectl", "drain","--dry-run=client", nodename, "--ignore-daemonsets", "--delete-emptydir-data"])
     container = client.V1Container(
-        name="pi",
-        image="perl",
-        command=["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"])
+        name="shutdown",
+        image="alpine",
+        command=["echo", "Shutting down the host (fake)"])
     # Create and configure a spec section
     template = client.V1PodTemplateSpec(
-        metadata=client.V1ObjectMeta(labels={"app": "pi"}),
-        spec=client.V1PodSpec(restart_policy="Never", containers=[container]))
+        metadata=client.V1ObjectMeta(labels={"app": "custom-auto-scaler-shutdown-job"}),
+        spec=client.V1PodSpec(
+            restart_policy="Never",
+            containers=[container],
+            init_containers=[initcontainer]
+            )
+        )
     # Create the specification of deployment
     spec = client.V1JobSpec(
         template=template,
-        backoff_limit=4)
+        backoff_limit=1,
+        ttl_seconds_after_finished=30
+        )
     # Instantiate the job object
     job = client.V1Job(
         api_version="batch/v1",
@@ -223,6 +234,7 @@ def get_job_status(api_instance, job_name):
             job_completed = True
         time.sleep(1)
         print(f"Job status='{str(api_response.status)}'")
+        return job_completed
 
 def create_downscale_job(job):
     configuration = main()
@@ -231,5 +243,4 @@ def create_downscale_job(job):
         body=job,
         namespace="custom-autoscaler-system")
     print(f"Job created. status='{str(api_response.status)}'")
-    job_status = get_job_status(api_instance)
-    return job_status
+    return api_response
