@@ -82,6 +82,7 @@ def handle_downscale(nodename):
             return True
         else:
             logger.error(f"Downscale failed, node {nodename} was not deemed NotReady")
+            delete_downscale_jobs(nodename=nodename)
             return False
 
 def check_downscale_possibility():
