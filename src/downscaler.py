@@ -73,8 +73,8 @@ def handle_downscale(nodename):
         logger.info(f"Draining node was succesful, shutting down {nodename}")
         shutdown_job_object=create_downscale_shutdown_job_object(nodename=nodename)
         create_downscale_job(job=shutdown_job_object)
-        node_status=wait_for_node_to_become_notready(nodename=nodename)
-        if node_status==True:
+        node_not_ready=wait_for_node_to_become_notready(nodename=nodename)
+        if node_not_ready==True:
             logger.info("Deleting node from the cluster")
             delete_node_from_cluster(nodename=nodename)
             delete_downscale_jobs(nodename=nodename)
