@@ -95,13 +95,13 @@ def check_for_pending_upscale(nodename):
     else:
         return False
         
+def check_pending_pod_eligibility_for_upscale(pod):
     if "cluster-autoscaler-triggered" in pod.metadata.labels:
         logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
         
         return False    
     elif pod.metadata.owner_references[0].kind == "DaemonSet":
         logger.info(f"Ignoring pod {pod.metadata.name} because it's part of a daemonset")
-        
         return False
     else:
         return True
@@ -167,7 +167,7 @@ def handle_pending_pod(event):
     if (
         pendingpodreason.name != "Unknown" 
         and len(matching_nodes) > 0
-        and check_pending_pod_eligibility(pod) == True
+        and check_pending_pod_eligibility_for_upscale(pod) == True
         ):
         logger.info(f"Found eligible pod for autoscaling: {pending_pod.podname}")
         if match_pod_to_node(matching_nodes=matching_nodes, pendingpodreason=pendingpodreason, pod=pod, pending_pod=pending_pod):
