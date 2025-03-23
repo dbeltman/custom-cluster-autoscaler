@@ -56,8 +56,8 @@ def check_node_for_scaledown_eligibility(nodename):
         for pod in node_pods.items:
             node_required_by_pod = check_pod_requirements_for_node_capabilities(pod=pod, node_capabilities=node_capabilities, nodename=nodename)
             if node_required_by_pod:
-                break
-            
+                return False
+        
         else:
             return True
 
