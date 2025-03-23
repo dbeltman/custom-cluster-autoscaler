@@ -90,7 +90,11 @@ def check_downscale_possibility():
             result = check_node_for_scaledown_eligibility(nodename=nodename)
             if result == True:
                 logger.info(f"Node {nodename} IS eligible for downscale")
-                handle_downscale(nodename=nodename)
+                downscale_result = handle_downscale(nodename=nodename)
+                if downscale_result == True:
+                    logger.info(f"Node {nodename} downscaled succesfully")
+                else:
+                    logger.error(f"Node {nodename} downscale was unsuccesful")
             else:
                 logger.info(f"Node {nodename} NOT eligible for downscale")
             
