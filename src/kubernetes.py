@@ -189,5 +189,47 @@ def watch_pending_pods():
             except TypeError as e:
                 print(f'ERROR: {e}')
         
+def create_downscale_job_object(nodename):
+    # Configure Pod template container
+    container = client.V1Container(
+        name="pi",
+        image="perl",
+        command=["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"])
+    # Create and configure a spec section
+    template = client.V1PodTemplateSpec(
+        metadata=client.V1ObjectMeta(labels={"app": "pi"}),
+        spec=client.V1PodSpec(restart_policy="Never", containers=[container]))
+    # Create the specification of deployment
+    spec = client.V1JobSpec(
+        template=template,
+        backoff_limit=4)
+    # Instantiate the job object
+    job = client.V1Job(
+        api_version="batch/v1",
+        kind="Job",
+        metadata=client.V1ObjectMeta(name=f"downscale-{nodename}"),
+        spec=spec)
 
-              
+    return job    
+
+def get_job_status(api_instance, job_name):
+    job_completed = False
+    while not job_completed:
+        api_response = api_instance.read_namespaced_job_status(
+            name=job_name,
+            namespace="custom-autoscaler-system")
+        if api_response.status.succeeded is not None or \
+                api_response.status.failed is not None:
+            job_completed = True
+        time.sleep(1)
+        print(f"Job status='{str(api_response.status)}'")
+
+def create_downscale_job(job):
+    configuration = main()
+    api_instance = client.BatchV1Api(client.ApiClient(configuration))
+    api_response = api_instance.create_namespaced_job(
+        body=job,
+        namespace="custom-autoscaler-system")
+    print(f"Job created. status='{str(api_response.status)}'")
+    job_status = get_job_status(api_instance)
+    return job_status
