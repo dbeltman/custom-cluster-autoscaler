@@ -205,7 +205,8 @@ def create_downscale_job_object(nodename):
         spec=client.V1PodSpec(
             restart_policy="Never",
             containers=[container],
-            init_containers=[initcontainer]
+            init_containers=[initcontainer],
+            service_account="custom-cluster-autoscaler-downscaler"
             )
         )
     # Create the specification of deployment
