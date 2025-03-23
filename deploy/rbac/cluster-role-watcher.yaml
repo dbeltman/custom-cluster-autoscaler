@@ -17,8 +17,17 @@ rules:
   - ""
   resources:
   - pods
+  verbs:
+  - get
+  - list
+  - watch  
+  - patch
+- apiGroups:
+  - "batch"
+  resources:
   - jobs
   verbs:
+  - create
   - get
   - list
   - watch  
