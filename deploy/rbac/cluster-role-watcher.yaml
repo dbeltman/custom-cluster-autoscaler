@@ -6,6 +6,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes
+  verbs:
+  - delete
+- apiGroups:
+  - ""
+  resources:
   - pods
   - events
   - nodes
@@ -33,3 +39,4 @@ rules:
   - list
   - watch  
   - patch
+  - delete
