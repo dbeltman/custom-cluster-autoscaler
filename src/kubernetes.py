@@ -203,10 +203,10 @@ def delete_downscale_jobs(nodename):
     drain_job_name=f"downscale-drain-{nodename}"
     shutdown_job_name=f"downscale-shutdown-{nodename}"
     try:
-        drain_job_delete = api_instance.delete_namespaced_job(drain_job_name, namespace="custom-autoscaler-system")
-        shutdown_job_delete = api_instance.delete_namespaced_job(shutdown_job_name, namespace="custom-autoscaler-system")
+        api_instance.delete_namespaced_job(drain_job_name, namespace="custom-autoscaler-system")
+        api_instance.delete_namespaced_job(shutdown_job_name, namespace="custom-autoscaler-system")
     except Exception as e:
-        logger.warning(f"Something went wrong deleting scaledown jobs for {nodename}")
+        logger.warning(f"Something went wrong deleting scaledown jobs for {nodename}: {e}")
 
 
 def delete_node_from_cluster(nodename):
@@ -227,6 +227,7 @@ def wait_for_node_to_become_notready(nodename):
     time.sleep(60)    
     # Get the nodes list from the API   
     node_ready=True
+    logger.info(f"Checking if node {nodename} has been shut down")
     for attempt in range(0,10):
         while node_ready == True:
             nodes_list = v1.list_node(
@@ -380,7 +381,7 @@ def get_job_status(job_name):
     job_completed = False
     while not job_completed:
         logger.info(f"Waiting for job {job_name} to complete")
-        for attempt in range(0,10):
+        for attempt in range(0,60):
             api_response = api_instance.read_namespaced_job_status(
                 name=job_name,
                 namespace="custom-autoscaler-system")
@@ -390,7 +391,7 @@ def get_job_status(job_name):
                 return job_completed
             time.sleep(1)
         else: 
-            logger.error(f"Job {job_name} failed to complete in 3 tries!")
+            logger.error(f"Job {job_name} failed to complete in {attempt} tries!")
             return job_completed
 
 def create_downscale_job(job):
