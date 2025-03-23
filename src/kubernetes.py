@@ -43,7 +43,7 @@ def main():
 
 # Function to check if a node is present in the cluster
 def check_node_presence_in_cluster(node_name):
-    logger.info("Checking node presence in cluster")
+    logger.debug("Checking node presence in cluster")
     configuration = main()
     # Create a Kubernetes client with the configured configuration
     v1 = client.CoreV1Api(client.ApiClient(configuration))
@@ -64,12 +64,7 @@ def get_pods_on_node(node_name):
     logger.info(f"Getting all pods on node {node_name}")
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))
-
-    # Get the pods list for the specified node
     pods_list = v1.list_pod_for_all_namespaces(field_selector=f"spec.nodeName={node_name}", watch=False)
-
- 
-
     return pods_list
 
 
@@ -84,7 +79,6 @@ def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
     # Label the pod
     for attempt in range(0,3):
         try:
-            time.sleep(1)
             v1.patch_namespaced_pod(pod_name, namespace=namespace, body=pod)
         except client.exceptions.ApiException as e:
             logger.info(f"Got API Exception {e.status}, sleeping 3 seconds, retry #{attempt}")
@@ -93,31 +87,14 @@ def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
             
     logger.info("Labeled pod {} in namespace {} to be marked as handled".format(pod_name, namespace))
 
-async def check_node_for_scaledown(nodename):
-    """
-    This functions checks wether the node is still necessary according to the pods on the node, combined with the capabilities the node offers. 
-    Assuming nodes in inventory are always "extra", they can be shutdown/removed when there are no pods running that require it's resources.
-    This will create a problem with CPU/Memory scaling in the future, since that is a resource any pod will require. #Todo; Fix this
-    """
-    nodepods=get_pods_on_node(node_name=nodename) #Get all pods on node
-    nodecapabilities=get_capabilities_by_node(node_name=nodename) #Get capabilities node offers
-    for pod in nodepods:
-        for capability in nodecapabilities:
-            if capability == "gpu":
-                if pod.spec.requirements.gpu > 0: #Check if pod needs the gpu capability of this node
-                    logger.debug("Pod requires a resource this node offers")
-            if capability == "nodespecificresources":
-                if pod.spec.nodeselector == f"kubernetes.io/hostname: {nodename}": #Check if pod has a nodeselector pointing to this node
-                    logger.debug("Pod requires a resource this node offers")
-            else: 
-                logger.error("unknown capability? Fix your code, developer!")
-
 def check_pending_pod_eligibility(pod):
     if "cluster-autoscaler-triggered" in pod.metadata.labels:
         logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
+        
         return False    
     elif pod.metadata.owner_references[0].kind == "DaemonSet":
         logger.info(f"Ignoring pod {pod.metadata.name} because it's part of a daemonset")
+        
         return False
     else:
         return True
@@ -151,6 +128,7 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
             logger.info(f"{node.node_name} matches pod requirement and is not present in the cluster. Turning on the node.")
             power_on_result=power_on_node(node=node)
             if power_on_result == True:
+                
                 logger.debug("Power on seems to be succesful, breaking loop as we expect node will be up soon")
                 label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
                 break 
@@ -178,7 +156,7 @@ def handle_pending_pod(event):
     obj=event['object'].involved_object
     pod = v1.read_namespaced_pod(name=obj.name, namespace=obj.namespace)
     pending_pod = PendingPod(pendingpodreason, obj.name, obj.namespace)
-    matching_nodes=get_nodes_by_requirement(pending_pod.reason.requirement)
+    matching_nodes = get_nodes_by_requirement(pending_pod.reason.requirement)
     if (
         pendingpodreason.name != "Unknown" 
         and len(matching_nodes) > 0
@@ -192,7 +170,8 @@ def handle_pending_pod(event):
             return False
     else:
         return False
-async def watch_pending_pods():
+
+def watch_pending_pods():
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))      
     start_time = datetime.datetime.now(datetime.timezone.utc)
@@ -206,7 +185,9 @@ async def watch_pending_pods():
             # print("Event: %s %s %s" % (event['object'].reason, event['object'].message, event['object'].involved_object.name))
             try:
                 handle_pending_pod(event=event)
+                
             except TypeError as e:
                 print(f'ERROR: {e}')
+        
 
               

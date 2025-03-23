@@ -4,11 +4,11 @@ import time, datetime
 import sys
 import signal
 import asyncio
+import threading
+from concurrent.futures import ProcessPoolExecutor
 from src.classes import all_reasons, PendingPodReason, NodeCapabilities, AutoScaleNode, PendingPod
-from src.kubernetes_handler import check_node_presence_in_cluster, label_pod_with_custom_autoscaler_trigger, watch_pending_pods
-from src.bmc_handler import power_on_esphome_system, power_on_mqtt_system
-from src.event_parser import handle_event
-
+from src.kubernetes import watch_pending_pods
+from src.downscaler import check_downscale_possibility
 from kubernetes import client, config, watch
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -17,7 +17,6 @@ ch = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-
 
 if os.getenv("PRODUCTION") == "True":
     logger.info("Running in PRODUCTION mode!")
@@ -37,7 +36,12 @@ def signal_handler(signum, frame):
     """
     logger.info('Caught SIGTERM signal. Stopping...')
     sys.exit(0)
-    
+
+def periodic_tasks():
+    while True:
+        check_downscale_possibility()
+        time.sleep(60)
+
 def main():
     """
     Auto-scales nodes based on pending pods in Kubernetes cluster.
@@ -45,8 +49,10 @@ def main():
     If a node is not present, it turns on the node using the specified BMC method (esphome by default).
     """
     signal.signal(signal.SIGTERM, signal_handler)
-    asyncio.run(watch_pending_pods())
-
+    t1 = threading.Thread(target=watch_pending_pods)
+    t1.daemon = True
+    t1.start()    
+    periodic_tasks()
 
 if __name__ == "__main__":
     main()
