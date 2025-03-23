@@ -76,6 +76,8 @@ def handle_downscale(nodename):
         node_not_ready=wait_for_node_to_become_notready(nodename=nodename)
         if node_not_ready==True:
             logger.info("Deleting node from the cluster")
+            delete_downscale_jobs(nodename=nodename)
+            time.sleep(1)
             delete_node_from_cluster(nodename=nodename)
             delete_downscale_jobs(nodename=nodename)
         else:
