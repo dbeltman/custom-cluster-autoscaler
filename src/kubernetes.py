@@ -200,7 +200,7 @@ def delete_downscale_jobs(nodename):
     configuration = main()
     api_instance = client.BatchV1Api(client.ApiClient(configuration))
     drain_job_name=f"downscale-drain-{nodename}"
-    shutdown_job_name=f"downscale-drain-{nodename}"
+    shutdown_job_name=f"downscale-shutdown-{nodename}"
     try:
         drain_job_delete = api_instance.delete_namespaced_job(drain_job_name, namespace="custom-autoscaler-system")
         shutdown_job_delete = api_instance.delete_namespaced_job(shutdown_job_name, namespace="custom-autoscaler-system")
