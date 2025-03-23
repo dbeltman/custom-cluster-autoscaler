@@ -67,15 +67,14 @@ def get_pods_on_node(node_name):
     pods_list = v1.list_pod_for_all_namespaces(field_selector=f"spec.nodeName={node_name}", watch=False)
     return pods_list
 
-
-def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
+def label_pod_with_custom_autoscaler_trigger(pod_name, namespace, label_value):
     # Set up the Kubernetes client
     configuration = main()
     v1 = client.CoreV1Api(client.ApiClient(configuration))
 
     # Get the pod object
     pod = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
-    pod.metadata.labels["cluster-autoscaler-triggered"] = "true"    
+    pod.metadata.labels["cluster-autoscaler-triggered"] = label_value    
     # Label the pod
     for attempt in range(0,3):
         try:
@@ -113,7 +112,7 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
         node_presence=check_node_presence_in_cluster(node.node_name)
         if node_presence == True:
             logger.info(f"Node {node.node_name} is already present in the cluster. Cannot autoscale.")
-            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+            label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value="no-upscale-possible")
             return False
         if (
             pendingpodreason.requirement == 'nodespecificresources' 
@@ -125,11 +124,11 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
             power_on_result=power_on_node(node=node)
             if power_on_result == True:
                 logger.debug("Power on seems to be succesful, breaking loop as we expect node will be up soon")
-                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value=f"{node.node_name}-pending-upscale")
                 break 
             else:
                 logger.warning("Something went wrong powering on the node!")
-                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value="failed-upscale")
         elif (pendingpodreason.requirement == 'gpu'):
             # Check whether the pendingpodreason requirement is a gpu resource
             # and whether it isn't already in the cluster
@@ -138,11 +137,11 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
             if power_on_result == True:
                 
                 logger.debug("Power on seems to be succesful, breaking loop as we expect node will be up soon")
-                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value=f"{node.node_name}-pending-upscale")
                 break 
             else:
                 logger.warning("Something went wrong powering on the node!")
-                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value="failed-upscale")
         else:
             logger.info(f"Could not match {node.node_name} to {pending_pod.podname} with requirement {pendingpodreason.requirement}")
             matching_nodes.remove(node)
@@ -154,7 +153,7 @@ def match_pod_to_node(matching_nodes, pendingpodreason, pod, pending_pod):
                 #If this is the last item, we cant do anything now but label the pod as handled and prevent further action for this pod. 
                 #We assume pods will get descheduled after a long enough failurestate (high restart count, pending)
                 logger.warning("No more matching nodes left that match this pending requirement")
-                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace)
+                label_pod_with_custom_autoscaler_trigger(pending_pod.podname, pending_pod.podnamespace, label_value="no-upscale-possible")
                 break
 
 def handle_pending_pod(event):
