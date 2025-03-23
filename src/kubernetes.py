@@ -87,7 +87,15 @@ def label_pod_with_custom_autoscaler_trigger(pod_name, namespace):
             
     logger.info("Labeled pod {} in namespace {} to be marked as handled".format(pod_name, namespace))
 
-def check_pending_pod_eligibility(pod):
+def check_for_pending_upscale(nodename):
+    configuration = main()
+    v1 = client.CoreV1Api(client.ApiClient(configuration))  
+    pending_upscale_pods=v1.list_pod_for_all_namespaces(label_selector=f"cluster-autoscaler-triggered={nodename}-pending-upscale")
+    if len(pending_upscale_pods.items) > 0:
+        return True
+    else:
+        return False
+        
     if "cluster-autoscaler-triggered" in pod.metadata.labels:
         logger.info(f"Found already handled pod: {pod.metadata.name} in namespace {pod.metadata.namespace}")
         

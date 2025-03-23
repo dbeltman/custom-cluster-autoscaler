@@ -62,6 +62,10 @@ def check_node_for_scaledown_eligibility(nodename):
             return True
 
 def handle_downscale(nodename):
+    pending_upscale=check_for_pending_upscale(nodename=nodename)
+    if pending_upscale:
+        logger.warning(f"Node {nodename} has pending upscale by pods")
+        return False
     drain_job_object=create_downscale_drain_job_object(nodename=nodename)
     create_downscale_job(job=drain_job_object)    
     drain_status=get_job_status(job_name=drain_job_object.metadata.name)
