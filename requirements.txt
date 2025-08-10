@@ -1,4 +1,4 @@
 kubernetes == 29.0.0
 debugpy == 1.8.1
-aioesphomeapi ==24.5.0
+aioesphomeapi ==24.6.2
 paho-mqtt==1.6.1
